@@ -666,16 +666,31 @@ a:hover {
 
 @media (max-width: 640px) {
   .hero {
-    padding-top: 2.5rem;
+    padding: 2.5rem 1rem 3rem;
+  }
+
+  .topbar {
+    gap: 1.25rem;
   }
 
   .hero h1 {
     font-size: 2.5rem;
   }
 
+  .nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem;
+    background: rgba(15, 32, 71, 0.85);
+  }
+
   .nav a {
-    flex: 1 1 auto;
+    flex: none;
     text-align: center;
+    padding: 0.8rem 1rem;
+    white-space: normal;
   }
 
   .music-actions {
