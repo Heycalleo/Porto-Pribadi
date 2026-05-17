@@ -8,6 +8,19 @@
 </head>
 <body>
     <div class="particle-field" aria-hidden="true"></div>
+    <div class="intro-overlay" id="introOverlay">
+        <div class="intro-card">
+            <p class="intro-eyebrow">Tunggu dulu...</p>
+            <h1>Berani masuk ke halaman yang nggak biasa?</h1>
+            <p>Ini bukan sekadar portofolio. Ada playlist rahasia, vibe yang bergerak, dan cerita kecil menunggu.</p>
+            <p class="intro-teaser">
+                <span>dark synth + midnight code</span>
+                <span>hidden playlist hampir terbuka</span>
+                <span>visual portofolio yang hidup</span>
+            </p>
+            <button id="enterButton" class="button intro-button">Buka rahasia</button>
+        </div>
+    </div>
     <header class="hero">
         <div class="hero-overlay"></div>
         <div class="topbar">
@@ -96,6 +109,19 @@
             </div>
         </section>
 
+        <section id="feedback" class="card feedback-card">
+            <h2>Feedback</h2>
+            <p>Kirim ide, kritik, atau cerita singkat. Feedback akan dikirim ke webhook, dan IP publik ditambahkan untuk mencegah spam.</p>
+            <form id="feedbackForm" class="feedback-form">
+                <label for="feedbackName">Nama (opsional)</label>
+                <input id="feedbackName" name="name" type="text" placeholder="Misal: Hanif" />
+                <label for="feedbackMessage">Pesan kamu</label>
+                <textarea id="feedbackMessage" name="message" rows="4" placeholder="Tulis feedback di sini..."></textarea>
+                <button type="submit" class="button">Kirim feedback</button>
+            </form>
+            <p id="feedbackStatus" class="feedback-status">Isi webhook URL di script agar feedback bisa dikirim.</p>
+        </section>
+
         <section id="kontak" class="card">
             <h2>Kontak</h2>
             <p>Kalau ingin ngobrol, cek link berikut:</p>
@@ -108,7 +134,7 @@
     </main>
 
     <footer class="footer">
-        <p>&copy; <span id="year"></span>Heynif Portofolio</p>
+        <p>&copy; <span id="year"></span> Heynif Portofolio</p>
     </footer>
 
     <script src="script.js"></script>

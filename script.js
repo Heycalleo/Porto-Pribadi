@@ -2,6 +2,8 @@ const root = document.documentElement;
 const yearElement = document.getElementById('year');
 const musicButton = document.getElementById('musicButton');
 const musicInfo = document.getElementById('musicInfo');
+const enterButton = document.getElementById('enterButton');
+const introOverlay = document.getElementById('introOverlay');
 const hero = document.querySelector('.hero');
 const particleField = document.querySelector('.particle-field');
 
@@ -46,10 +48,94 @@ if (yearElement) {
   yearElement.textContent = new Date().getFullYear();
 }
 
+if (introOverlay) {
+  document.body.classList.add('hide-scroll');
+}
+
+if (enterButton && introOverlay) {
+  enterButton.addEventListener('click', () => {
+    introOverlay.classList.add('intro-hidden');
+    document.body.classList.remove('hide-scroll');
+    window.setTimeout(() => {
+      introOverlay.style.display = 'none';
+    }, 500);
+  });
+}
+
 if (musicButton && musicInfo) {
   musicButton.addEventListener('click', () => {
     const isHidden = musicInfo.classList.toggle('hidden');
     musicButton.textContent = isHidden ? 'Tampilkan rekomendasi album' : 'Sembunyikan rekomendasi album';
+  });
+}
+
+const FEEDBACK_WEBHOOK_URL = 'https://discord.com/api/webhooks/1505371926661562621/EA2Zw6Ez7PBHDWNz740aqVkpNGoienzpxXy6dPTrZSit7rNP4wTh_9u3qk_IfSQdCMLE';
+const feedbackForm = document.getElementById('feedbackForm');
+const feedbackStatus = document.getElementById('feedbackStatus');
+
+async function getPublicIp() {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip || 'unknown';
+  } catch (error) {
+    return 'unknown';
+  }
+}
+
+async function sendFeedback(payload) {
+  if (!FEEDBACK_WEBHOOK_URL) {
+    throw new Error('Webhook URL belum diset.');
+  }
+
+  const response = await fetch(FEEDBACK_WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Gagal mengirim feedback.');
+  }
+}
+
+if (feedbackForm && feedbackStatus) {
+  feedbackForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const name = document.getElementById('feedbackName').value.trim() || 'Anonim';
+    const message = document.getElementById('feedbackMessage').value.trim();
+
+    if (!message) {
+      feedbackStatus.textContent = 'Tolong tulis pesan feedback sebelum kirim.';
+      feedbackStatus.classList.remove('success');
+      feedbackStatus.classList.add('error');
+      return;
+    }
+
+    feedbackStatus.textContent = 'Mengirim feedback...';
+    feedbackStatus.classList.remove('success', 'error');
+
+    try {
+      const ip = await getPublicIp();
+      const payload = {
+        name,
+        message,
+        ip,
+        content: `Feedback dari: ${name}\nIP publik: ${ip}\nPesan:\n${message}`,
+      };
+
+      await sendFeedback(payload);
+      feedbackStatus.textContent = 'Feedback berhasil dikirim. Terima kasih!';
+      feedbackStatus.classList.add('success');
+      feedbackForm.reset();
+    } catch (error) {
+      feedbackStatus.textContent = `Error: ${error.message}`;
+      feedbackStatus.classList.add('error');
+    }
   });
 }
 
