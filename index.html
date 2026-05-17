@@ -7,6 +7,28 @@
     <link rel="stylesheet" href="syle.css">
 </head>
 <body>
+    <div class="cursor-glow" id="cursorGlow"></div>
+    <div class="particle-trail" id="particleTrail"></div>
+    <div class="floating-shapes" id="floatingShapes"></div>
+    <div class="floating-bubbles" id="floatingBubbles"></div>
+    <div class="confetti" id="confetti"></div>
+    <div class="scroll-progress"></div>
+    <div class="color-picker-toggle">
+        <button id="colorPickerBtn" class="color-picker-btn" aria-label="Pick color">🎨</button>
+        <div id="colorPicker" class="color-picker hidden">
+            <div class="color-option" data-color="#888888"></div>
+            <div class="color-option" data-color="#ffffff"></div>
+            <div class="color-option" data-color="#1a1a1a"></div>
+            <div class="color-option" data-color="#ff8c42"></div>
+            <div class="color-option" data-color="#7db8ff"></div>
+            <div class="color-option" data-color="#ff6b9d"></div>
+            <div class="color-option" data-color="#00d4aa"></div>
+            <div class="color-option" data-color="#ffd93d"></div>
+            <div class="color-option" data-color="#a78bfa"></div>
+            <div class="color-option" data-color="#ff4757"></div>
+        </div>
+    </div>
+    <button id="backToTop" class="back-to-top hidden" aria-label="Back to top">↑</button>
     <div class="particle-field" aria-hidden="true"></div>
     <div class="intro-overlay" id="introOverlay">
         <div class="intro-card">
@@ -119,7 +141,7 @@
                 <textarea id="feedbackMessage" name="message" rows="4" placeholder="Tulis feedback di sini..."></textarea>
                 <button type="submit" class="button">Kirim feedback</button>
             </form>
-            <p id="feedbackStatus" class="feedback-status">Isi webhook URL di script agar feedback bisa dikirim.</p>
+            <p id="feedbackStatus" class="feedback-status"></p>
         </section>
 
         <section id="kontak" class="card">
@@ -132,7 +154,7 @@
             </ul>
         </section>
     </main>
-
+1
     <footer class="footer">
         <p>&copy; <span id="year"></span> Heynif Portofolio</p>
     </footer>
