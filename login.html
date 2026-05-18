@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Masuk — Portofolio</title>
+  <link rel="stylesheet" href="syle.css">
+</head>
+<body class="login-page">
+  <main class="login-wrap">
+    <div class="login-card">
+      <h1 class="logo">Goks</h1>
+      <p class="lead">Masuk untuk pengalaman penuh — atau lanjut sebagai tamu.</p>
+
+      <div class="tabs">
+        <button id="tabLogin" class="tab active">Login</button>
+        <button id="tabSignup" class="tab">Sign Up</button>
+      </div>
+
+      <form id="loginForm" class="form">
+        <label>Nama pengguna</label>
+        <input id="loginUser" type="text" placeholder="username" required />
+        <label>Password</label>
+        <input id="loginPass" type="password" placeholder="password" required />
+        <button class="btn primary" type="submit">Masuk</button>
+      </form>
+
+      <form id="signupForm" class="form hidden">
+        <label>Nama pengguna</label>
+        <input id="signupUser" type="text" placeholder="pilih username" required />
+        <label>Password</label>
+        <input id="signupPass" type="password" placeholder="password" required />
+        <label>Email (opsional)</label>
+        <input id="signupEmail" type="email" placeholder="email@contoh.com" />
+        <button class="btn primary" type="submit">Daftar</button>
+      </form>
+
+      <div class="or">atau</div>
+      <div class="actions">
+        <button id="guestBtn" class="btn ghost">Lanjut sebagai Tamu</button>
+        <a href="index.html" class="btn link small">Kembali ke beranda</a>
+      </div>
+      <div style="margin-top:0.8rem; display:flex; gap:0.5rem; align-items:center;">
+        <button id="adminBtn" class="btn small" style="flex:1;">Login sebagai Admin</button>
+      </div>
+      <div id="adminArea" class="admin-area hidden" style="margin-top:0.8rem;">
+        <label>Password Admin</label>
+        <input id="adminPass" type="password" placeholder="masukkan password admin" />
+        <div style="display:flex; gap:0.5rem; margin-top:0.5rem;"><button id="adminLoginBtn" class="btn primary">Masuk Admin</button><button id="adminCancelBtn" class="btn ghost">Batal</button></div>
+      </div>
+      <p class="foot">Daftar memberi akses ke semua fitur. Email hanya dibutuhkan untuk notifikasi (opsional).</p>
+    </div>
+  </main>
+
+  <script src="login.js"></script>
+</body>
+</html>

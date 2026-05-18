@@ -5,8 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portofolio Personal Modern</title>
     <link rel="stylesheet" href="syle.css">
+        <script>
+            (function(){
+                try {
+                    var role = sessionStorage.getItem('userRole');
+                    var isLogin = /login\.html$/.test(location.pathname);
+                    if (!role && !isLogin) {
+                        location.replace('login.html');
+                    }
+                } catch (e) { /* ignore */ }
+            })();
+        </script>
+                <script>
+                    (function(){
+                        try {
+                            var r = sessionStorage.getItem('userRole');
+                            if (r === 'admin') {
+                                var css = localStorage.getItem('admin_custom_style');
+                                if (css) {
+                                    var s = document.createElement('style'); s.id = 'admin-custom-style'; s.textContent = css; document.head.appendChild(s);
+                                }
+                            }
+                        } catch(e){}
+                    })();
+                </script>
 </head>
 <body>
+    <div id="floatingAuth" class="floating-auth" aria-hidden="false">
+        <div id="authContent">
+            <button id="floatingLogin" class="btn small">Masuk</button>
+            <button id="floatingSignup" class="btn small">Daftar</button>
+        </div>
+    </div>
     <div class="cursor-glow" id="cursorGlow"></div>
     <div class="particle-trail" id="particleTrail"></div>
     <div class="floating-shapes" id="floatingShapes"></div>
@@ -73,7 +103,7 @@
             <ul>
                 <li>Suka eksplorasi Teknologi</li>
                 <li>Musik selalu jadi teman aktivitas sehari-hari</li>
-                <li>Senang menjelajahi genre musik </li>
+                <li>Suka mengedit video menggunakan software adobe </li>
             </ul>
         </section>
 
@@ -104,7 +134,6 @@
                 <li>Heavy metal</li>
             </ul>
             <div class="music-actions">
-                <button id="musicButton" class="button">Tampilkan rekomendasi album</button>
                 <a class="button button-secondary" href="https://open.spotify.com/playlist/79cbORVNOg1yv7W9uGpwLX?si=04fd5f803e594f44" target="_blank" rel="noreferrer">Buka playlist Spotify</a>
             </div>
             <div id="musicInfo" class="hidden">
@@ -135,8 +164,8 @@
             <h2>Feedback</h2>
             <p>Kirim ide, kritik, atau cerita singkat. Feedback akan dikirim ke webhook, dan IP publik ditambahkan untuk mencegah spam.</p>
             <form id="feedbackForm" class="feedback-form">
-                <label for="feedbackName">Nama (opsional)</label>
-                <input id="feedbackName" name="name" type="text" placeholder="Misal: Hanif" />
+                <label for="feedbackName">Nama </label>
+                <input id="feedbackName" name="name" type="text" placeholder="Misal: Ucup" required aria-required="true" />
                 <label for="feedbackMessage">Pesan kamu</label>
                 <textarea id="feedbackMessage" name="message" rows="4" placeholder="Tulis feedback di sini..."></textarea>
                 <button type="submit" class="button">Kirim feedback</button>
@@ -154,10 +183,44 @@
             </ul>
         </section>
     </main>
-1
+
     <footer class="footer">
         <p>&copy; <span id="year"></span> Heynif Portofolio</p>
+        <div style="margin-top:0.6rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
+            <button id="tantangBtn" class="button">Tantangan</button>
+            <button id="seruBtn" class="button button-secondary">Seru Mode</button>
+        </div>
     </footer>
+
+    <button id="miniGamesLauncher" class="mini-games-launcher hidden" type="button">Buka Mini Games</button>
+
+    <section id="miniGamesPanel" class="mini-games-panel hidden" aria-hidden="true">
+        <div class="mini-games-backdrop" data-close-mini-games="true"></div>
+        <div class="mini-games-card">
+            <div class="mini-games-header">
+                <div>
+                    <p class="eyebrow">Seru Mode Bonus</p>
+                    <h2>Mini Games Corner</h2>
+                    <p>Pilih salah satu dari 5 minigame buat nemenin vibe seru mode.</p>
+                </div>
+                <button id="closeMiniGames" class="mini-games-close" type="button" aria-label="Tutup mini games">&times;</button>
+            </div>
+            <div class="mini-games-grid">
+                <button class="mini-game-tab active" type="button" data-game="guess-number">Tebak Angka</button>
+                <button class="mini-game-tab" type="button" data-game="rps">Suit</button>
+                <button class="mini-game-tab" type="button" data-game="math">Hitung Cepat</button>
+                <button class="mini-game-tab" type="button" data-game="star-catcher">Tangkap Bintang</button>
+                <button class="mini-game-tab" type="button" data-game="memory-lights">Memory Lampu</button>
+            </div>
+            <div class="mini-game-playground">
+                <div class="mini-game-info">
+                    <h3 id="miniGameTitle">Tebak Angka</h3>
+                    <p id="miniGameDescription">Tebak angka dari 1 sampai 10. Setiap jawaban akan dikasih petunjuk lebih besar atau lebih kecil.</p>
+                </div>
+                <div id="miniGameContent" class="mini-game-content"></div>
+            </div>
+        </div>
+    </section>
 
     <script src="script.js"></script>
 </body>
