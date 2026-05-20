@@ -151,6 +151,63 @@
             </div>
         </section>
 
+        <section id="mood-lab" class="card mood-lab-card">
+            <div class="mood-lab-copy">
+                <div class="feature-heading">
+                    <p class="eyebrow">Fitur Baru</p>
+                    <span class="new-badge">New</span>
+                </div>
+                <h2>Mood Lab</h2>
+                <p>Mix suasana kamu sendiri lalu lihat alter ego, level energi, dan vibe soundtrack yang berubah secara live.</p>
+            </div>
+            <div class="mood-lab-layout">
+                <div class="mood-controls">
+                    <div class="mood-presets" aria-label="Preset suasana">
+                        <button class="mood-preset active" type="button" data-preset="midnight">Midnight Code</button>
+                        <button class="mood-preset" type="button" data-preset="sunset">Sunset Drive</button>
+                        <button class="mood-preset" type="button" data-preset="chaos">Chaos Stage</button>
+                    </div>
+
+                    <label class="mood-slider" for="energyRange">
+                        <span>Energi</span>
+                        <input id="energyRange" type="range" min="0" max="100" value="72" />
+                        <strong id="energyValue">72%</strong>
+                    </label>
+
+                    <label class="mood-slider" for="chaosRange">
+                        <span>Chaos</span>
+                        <input id="chaosRange" type="range" min="0" max="100" value="48" />
+                        <strong id="chaosValue">48%</strong>
+                    </label>
+
+                    <label class="mood-slider" for="nostalgiaRange">
+                        <span>Nostalgia</span>
+                        <input id="nostalgiaRange" type="range" min="0" max="100" value="64" />
+                        <strong id="nostalgiaValue">64%</strong>
+                    </label>
+
+                    <button id="shuffleMood" class="button mood-shuffle" type="button">Acak Alter Ego</button>
+                </div>
+
+                <article id="moodDisplay" class="mood-display" aria-live="polite">
+                    <div class="mood-display-top">
+                        <span class="mood-badge" id="moodBadge">Mode aktif</span>
+                        <span class="mood-score" id="moodScore">73 / 100</span>
+                    </div>
+                    <h3 id="moodTitle">Midnight Signal Runner</h3>
+                    <p id="moodDescription">Kamu lagi di mode fokus yang tenang, cepat mikir, tapi tetap punya sisi liar buat ngulik hal baru.</p>
+                    <div class="mood-meter">
+                        <div id="moodMeterFill" class="mood-meter-fill"></div>
+                    </div>
+                    <div class="mood-tags" id="moodTags">
+                        <span>clean code</span>
+                        <span>night drive</span>
+                        <span>alt rock pulse</span>
+                    </div>
+                </article>
+            </div>
+        </section>
+
         <section id="favorit" class="card">
             <h2>Favorit</h2>
             <div class="favorites">
@@ -187,8 +244,8 @@
     <footer class="footer">
         <p>&copy; <span id="year"></span> Heynif Portofolio</p>
         <div style="margin-top:0.6rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
-            <button id="tantangBtn" class="button">Tantangan</button>
-            <button id="seruBtn" class="button button-secondary">Seru Mode</button>
+            <button id="tantangBtn" class="button feature-button">Tantangan <span class="new-badge">New</span></button>
+            <button id="seruBtn" class="button button-secondary feature-button">Seru Mode <span class="new-badge">New</span></button>
         </div>
     </footer>
 

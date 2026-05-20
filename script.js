@@ -25,6 +25,258 @@ const miniGameTitle = document.getElementById('miniGameTitle');
 const miniGameDescription = document.getElementById('miniGameDescription');
 const miniGameContent = document.getElementById('miniGameContent');
 const miniGameTabs = Array.from(document.querySelectorAll('.mini-game-tab'));
+const moodDisplay = document.getElementById('moodDisplay');
+const moodBadge = document.getElementById('moodBadge');
+const moodScore = document.getElementById('moodScore');
+const moodTitle = document.getElementById('moodTitle');
+const moodDescription = document.getElementById('moodDescription');
+const moodMeterFill = document.getElementById('moodMeterFill');
+const moodTags = document.getElementById('moodTags');
+const energyRange = document.getElementById('energyRange');
+const chaosRange = document.getElementById('chaosRange');
+const nostalgiaRange = document.getElementById('nostalgiaRange');
+const energyValue = document.getElementById('energyValue');
+const chaosValue = document.getElementById('chaosValue');
+const nostalgiaValue = document.getElementById('nostalgiaValue');
+const shuffleMood = document.getElementById('shuffleMood');
+const moodPresetButtons = Array.from(document.querySelectorAll('.mood-preset'));
+
+function getPersistedUsers() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('pg_users') || '{}');
+    if (!parsed || typeof parsed !== 'object') return {};
+    return Object.fromEntries(
+      Object.entries(parsed).map(([username, record]) => [username, normalizePersistedUser(username, record)])
+    );
+  } catch (_) {
+    return {};
+  }
+}
+
+function savePersistedUsers(users) {
+  try {
+    localStorage.setItem('pg_users', JSON.stringify(users));
+  } catch (_) {
+    // ignore
+  }
+}
+
+function createDefaultProfile(username = '', email = '') {
+  return {
+    displayName: username || 'User',
+    bio: 'Suka bikin hal menarik, eksplor ide baru, dan ngulik visual yang beda.',
+    avatarUrl: '',
+    accent: '#7db8ff',
+    joinAt: Date.now(),
+    email,
+  };
+}
+
+function normalizePersistedUser(username, record = {}) {
+  const safeRecord = record && typeof record === 'object' ? record : {};
+  const profile = safeRecord.profile && typeof safeRecord.profile === 'object'
+    ? safeRecord.profile
+    : createDefaultProfile(username, safeRecord.email || '');
+
+  return {
+    hash: safeRecord.hash || '',
+    email: safeRecord.email || profile.email || '',
+    profile: {
+      ...createDefaultProfile(username, safeRecord.email || ''),
+      ...profile,
+      displayName: profile.displayName || username || 'User',
+      email: safeRecord.email || profile.email || '',
+    },
+  };
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatJoinDate(value) {
+  if (!value) return 'Baru bergabung';
+  try {
+    return new Date(value).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch (_) {
+    return 'Baru bergabung';
+  }
+}
+
+function getInitials(value) {
+  const words = String(value || 'User').trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((part) => part[0]?.toUpperCase() || '').join('') || 'U';
+}
+
+function getActiveProfileData() {
+  const role = sessionStorage.getItem('userRole');
+  const username = sessionStorage.getItem('username');
+  const email = sessionStorage.getItem('email') || '';
+
+  if (!role || !username) return null;
+  if (role === 'guest') {
+    return {
+      role,
+      username: 'Tamu',
+      email: '',
+      profile: {
+        displayName: 'Mode Tamu',
+        bio: 'Masuk cepat buat lihat isi website tanpa bikin akun dulu.',
+        avatarUrl: '',
+        accent: '#8f9bb7',
+        joinAt: Date.now(),
+      },
+    };
+  }
+
+  if (role === 'admin') {
+    return {
+      role,
+      username: 'admin',
+      email,
+      profile: {
+        displayName: 'Admin Console',
+        bio: 'Punya akses penuh untuk mengelola akun, tampilan, dan aktivitas situs.',
+        avatarUrl: '',
+        accent: '#ffb14a',
+        joinAt: Date.now(),
+      },
+    };
+  }
+
+  const users = getPersistedUsers();
+  const record = users[username];
+  if (!record) return null;
+
+  return {
+    role,
+    username,
+    email: record.email || email,
+    profile: normalizePersistedUser(username, record).profile,
+  };
+}
+
+function buildProfileAvatar(profile, username) {
+  if (profile?.avatarUrl) {
+    return `<img src="${escapeHtml(profile.avatarUrl)}" alt="Foto profil ${escapeHtml(profile.displayName || username)}" />`;
+  }
+  return `<span>${escapeHtml(getInitials(profile?.displayName || username))}</span>`;
+}
+
+function getAdminResetConfig() {
+  try {
+    return JSON.parse(localStorage.getItem('admin_reset_config') || 'null');
+  } catch (_) {
+    return null;
+  }
+}
+
+function getAnnouncementBanner() {
+  try {
+    return JSON.parse(localStorage.getItem('site_announcement_banner') || 'null');
+  } catch (_) {
+    return null;
+  }
+}
+
+const ADMIN_ACTIVITY_LOG_KEY = 'admin_activity_log';
+const ADMIN_SNAPSHOT_VERSION = 1;
+const ADMIN_SNAPSHOT_KEYS = [
+  'pg_users',
+  'admin_reset_config',
+  'site_announcement_banner',
+  'accent-color',
+  'admin_custom_style',
+  'admin_custom_index',
+];
+
+function getAdminActivityLog() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ADMIN_ACTIVITY_LOG_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function pushAdminActivityLog(action, details, actor = null) {
+  try {
+    const entries = getAdminActivityLog();
+    entries.unshift({
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      action,
+      details,
+      actor: actor || sessionStorage.getItem('username') || 'system',
+      createdAt: Date.now(),
+    });
+    localStorage.setItem(ADMIN_ACTIVITY_LOG_KEY, JSON.stringify(entries.slice(0, 40)));
+  } catch (_) {
+    // ignore
+  }
+}
+
+function renderAnnouncementBanner() {
+  const data = getAnnouncementBanner();
+  const existing = document.getElementById('siteAnnouncementBanner');
+  if (!data || !data.message || !String(data.message).trim()) {
+    existing?.remove();
+    return;
+  }
+
+  const banner = existing || document.createElement('div');
+  banner.id = 'siteAnnouncementBanner';
+  banner.className = 'site-announcement-banner';
+  banner.innerHTML = `
+    <div class="site-announcement-banner__inner">
+      <span class="site-announcement-banner__label">Announcement</span>
+      <p>${String(data.message)}</p>
+    </div>
+  `;
+
+  if (!existing) {
+    document.body.appendChild(banner);
+  }
+}
+
+function forceLogoutToLogin() {
+  try {
+    sessionStorage.removeItem('username');
+    sessionStorage.removeItem('userRole');
+    sessionStorage.removeItem('email');
+  } catch (_) {
+    // ignore
+  }
+  location.replace('login.html');
+}
+
+function validateActiveSession() {
+  const activeRole = sessionStorage.getItem('userRole');
+  const activeUser = sessionStorage.getItem('username');
+  if (!activeRole || activeRole === 'guest' || activeRole === 'admin') return true;
+  if (!activeUser) {
+    forceLogoutToLogin();
+    return false;
+  }
+  const users = getPersistedUsers();
+  if (!users[activeUser]) {
+    alert('Akun ini sudah dihapus atau tidak lagi tersedia. Silakan login lagi.');
+    forceLogoutToLogin();
+    return false;
+  }
+  return true;
+}
+
+validateActiveSession();
+renderAnnouncementBanner();
 
 // detect user role and apply guest restrictions (session-based)
 const storedRole = sessionStorage.getItem('userRole') || null;
@@ -88,13 +340,117 @@ const floatingSignup = document.getElementById('floatingSignup');
 function updateFloatingAuth() {
   if (!floatingAuth) return;
   const role = sessionStorage.getItem('userRole');
-  const user = sessionStorage.getItem('username');
   const authContent = document.getElementById('authContent');
   if (!authContent) return;
   if (role && role !== 'guest') {
-    // show user badge + logout
-    authContent.innerHTML = `<div class="user-badge"><span class="name">${user || 'User'}</span><button id="floatingLogout" class="btn small">Logout</button></div>`;
+    const account = getActiveProfileData();
+    if (!account) {
+      forceLogoutToLogin();
+      return;
+    }
+    const { username, email, profile } = account;
+    const accent = escapeHtml(profile.accent || '#7db8ff');
+    authContent.innerHTML = `
+      <div class="profile-menu" id="profileMenu">
+        <button id="profileTrigger" class="user-badge user-badge-button" type="button" aria-expanded="false">
+          <span class="user-badge-avatar" style="--profile-accent:${accent};">${buildProfileAvatar(profile, username)}</span>
+          <span class="user-badge-meta">
+            <strong class="name">${escapeHtml(profile.displayName || username || 'User')}</strong>
+            <span class="user-role-label">${escapeHtml(account.role)}</span>
+          </span>
+        </button>
+        <section id="profilePanel" class="profile-panel hidden" aria-hidden="true">
+          <div class="profile-panel-head">
+            <div class="profile-panel-avatar" style="--profile-accent:${accent};">${buildProfileAvatar(profile, username)}</div>
+            <div>
+              <p class="profile-panel-kicker">Account detail</p>
+              <h3>${escapeHtml(profile.displayName || username)}</h3>
+              <p class="profile-panel-username">@${escapeHtml(username)}</p>
+            </div>
+          </div>
+          <p class="profile-panel-bio">${escapeHtml(profile.bio || 'Belum ada bio.')}</p>
+          <div class="profile-panel-stats">
+            <article><span>Role</span><strong>${escapeHtml(account.role)}</strong></article>
+            <article><span>Email</span><strong>${escapeHtml(email || 'Belum diisi')}</strong></article>
+            <article><span>Join</span><strong>${escapeHtml(formatJoinDate(profile.joinAt))}</strong></article>
+          </div>
+          <div class="profile-panel-actions">
+            <button id="profileEditBtn" class="btn small ghost" type="button">Edit profile</button>
+            <button id="floatingLogout" class="btn small" type="button">Logout</button>
+          </div>
+          <form id="profileEditForm" class="profile-edit-form hidden">
+            <label for="profileDisplayName">Nama tampilan</label>
+            <input id="profileDisplayName" name="displayName" type="text" maxlength="32" value="${escapeHtml(profile.displayName || username)}" />
+            <label for="profileAvatarUrl">Link foto profil</label>
+            <input id="profileAvatarUrl" name="avatarUrl" type="url" placeholder="https://contoh.com/foto.jpg" value="${escapeHtml(profile.avatarUrl || '')}" />
+            <label for="profileBio">Bio singkat</label>
+            <textarea id="profileBio" name="bio" rows="3" maxlength="140" placeholder="Ceritain dikit tentang akun kamu...">${escapeHtml(profile.bio || '')}</textarea>
+            <label for="profileAccent">Warna profile</label>
+            <input id="profileAccent" name="accent" type="color" value="${accent}" />
+            <div class="profile-edit-actions">
+              <button id="profileSaveBtn" class="btn small primary" type="submit">Simpan</button>
+              <button id="profileCancelBtn" class="btn small ghost" type="button">Batal</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    `;
+
+    const profileMenu = document.getElementById('profileMenu');
+    const profileTrigger = document.getElementById('profileTrigger');
+    const profilePanel = document.getElementById('profilePanel');
+    const profileEditBtn = document.getElementById('profileEditBtn');
+    const profileEditForm = document.getElementById('profileEditForm');
+    const profileCancelBtn = document.getElementById('profileCancelBtn');
     const logoutBtn = document.getElementById('floatingLogout');
+    const toggleProfilePanel = (open) => {
+      if (!profilePanel || !profileTrigger || !profileMenu) return;
+      profilePanel.classList.toggle('hidden', !open);
+      profileMenu.classList.toggle('open', open);
+      profilePanel.setAttribute('aria-hidden', String(!open));
+      profileTrigger.setAttribute('aria-expanded', String(open));
+    };
+
+    profileTrigger?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const isOpen = profileMenu?.classList.contains('open');
+      toggleProfilePanel(!isOpen);
+    });
+
+    profileEditBtn?.addEventListener('click', () => {
+      profileEditForm?.classList.remove('hidden');
+    });
+
+    profileCancelBtn?.addEventListener('click', () => {
+      profileEditForm?.classList.add('hidden');
+    });
+
+    profileEditForm?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const users = getPersistedUsers();
+      const currentRecord = users[username];
+      if (!currentRecord) return;
+
+      const formData = new FormData(profileEditForm);
+      const nextDisplayName = String(formData.get('displayName') || '').trim() || username;
+      const nextAvatarUrl = String(formData.get('avatarUrl') || '').trim();
+      const nextBio = String(formData.get('bio') || '').trim() || createDefaultProfile(username).bio;
+      const nextAccent = String(formData.get('accent') || '#7db8ff').trim() || '#7db8ff';
+
+      users[username] = {
+        ...currentRecord,
+        profile: {
+          ...normalizePersistedUser(username, currentRecord).profile,
+          displayName: nextDisplayName,
+          avatarUrl: nextAvatarUrl,
+          bio: nextBio,
+          accent: nextAccent,
+        },
+      };
+      savePersistedUsers(users);
+      updateFloatingAuth();
+    });
+
     logoutBtn && logoutBtn.addEventListener('click', () => { sessionStorage.clear(); location.replace('login.html'); });
   } else if (role === 'guest') {
     authContent.innerHTML = `<div class="user-badge"><span class="name">Tamu</span><button id="floatingLoginGuest" class="btn small">Masuk</button></div>`;
@@ -110,12 +466,155 @@ function updateFloatingAuth() {
 }
 updateFloatingAuth();
 
+document.addEventListener('click', (event) => {
+  const profileMenu = document.getElementById('profileMenu');
+  const profilePanel = document.getElementById('profilePanel');
+  const profileTrigger = document.getElementById('profileTrigger');
+  if (!profileMenu || !profilePanel || !profileTrigger) return;
+  if (profileMenu.contains(event.target)) return;
+  profileMenu.classList.remove('open');
+  profilePanel.classList.add('hidden');
+  profilePanel.setAttribute('aria-hidden', 'true');
+  profileTrigger.setAttribute('aria-expanded', 'false');
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  const profileMenu = document.getElementById('profileMenu');
+  const profilePanel = document.getElementById('profilePanel');
+  const profileTrigger = document.getElementById('profileTrigger');
+  if (!profileMenu || !profilePanel || !profileTrigger) return;
+  profileMenu.classList.remove('open');
+  profilePanel.classList.add('hidden');
+  profilePanel.setAttribute('aria-hidden', 'true');
+  profileTrigger.setAttribute('aria-expanded', 'false');
+});
+
+window.addEventListener('storage', (event) => {
+  if (event.key === 'pg_users') {
+    validateActiveSession();
+    updateFloatingAuth();
+  }
+  if (event.key === 'site_announcement_banner') {
+    renderAnnouncementBanner();
+  }
+  if (storedRole === 'admin' && event.key === ADMIN_ACTIVITY_LOG_KEY) {
+    const list = document.querySelector('.admin-activity-list');
+    if (list) {
+      list.dispatchEvent(new CustomEvent('admin-log-sync'));
+    }
+  }
+});
+
 // Seru Mode toggle
 const seruBtn = document.getElementById('seruBtn');
 let seruInterval = null;
 let seruActive = false;
 let seruOverlay = null;
 let seruSparkInterval = null;
+const moodPresets = {
+  midnight: { energy: 72, chaos: 48, nostalgia: 64 },
+  sunset: { energy: 58, chaos: 26, nostalgia: 82 },
+  chaos: { energy: 92, chaos: 88, nostalgia: 34 },
+};
+
+function setRangeValue(input, output, value) {
+  if (!input || !output) return;
+  input.value = value;
+  output.textContent = `${value}%`;
+}
+
+function getMoodState() {
+  return {
+    energy: Number(energyRange?.value || 0),
+    chaos: Number(chaosRange?.value || 0),
+    nostalgia: Number(nostalgiaRange?.value || 0),
+  };
+}
+
+function updateMoodLab(activePreset = null) {
+  if (!moodDisplay || !moodBadge || !moodScore || !moodTitle || !moodDescription || !moodMeterFill || !moodTags) return;
+
+  const { energy, chaos, nostalgia } = getMoodState();
+  if (energyValue) energyValue.textContent = `${energy}%`;
+  if (chaosValue) chaosValue.textContent = `${chaos}%`;
+  if (nostalgiaValue) nostalgiaValue.textContent = `${nostalgia}%`;
+
+  const score = Math.round((energy * 0.42) + (chaos * 0.33) + (nostalgia * 0.25));
+  const modeName = energy > 80
+    ? (chaos > 70 ? 'Chaos performer' : 'Power focus')
+    : nostalgia > 75
+      ? 'Memory drift'
+      : chaos < 35
+        ? 'Calm explorer'
+        : 'Hybrid pulse';
+
+  const title =
+    energy > 80 && chaos > 70 ? 'Neon Riot Operator' :
+    nostalgia > 75 && chaos < 45 ? 'Sunset Archive Driver' :
+    energy > 65 && nostalgia > 55 ? 'Midnight Signal Runner' :
+    chaos > 75 ? 'Glitch Stage Wanderer' :
+    'Ocean Echo Builder';
+
+  const description =
+    energy > 80 && chaos > 70
+      ? 'Mode ini cocok buat malam yang liar: banyak ide, cepat gerak, dan suka bikin sesuatu yang berisik tapi keren.'
+      : nostalgia > 75 && chaos < 45
+        ? 'Kamu lagi ada di fase hangat dan reflektif, suka detail kecil, memori lama, dan vibe yang pelan tapi ngena.'
+        : energy > 65 && nostalgia > 55
+          ? 'Kombinasi fokus dan rasa. Cocok buat ngoding sambil ditemenin playlist yang bikin kepala tetap dingin.'
+          : chaos > 75
+            ? 'Vibe kamu lagi eksperimental. Sedikit liar, banyak tab kebuka, tapi justru sering lahir ide unik dari sini.'
+            : 'Mood kamu fleksibel dan bersih. Enak buat bikin sesuatu yang rapi, estetik, dan tetap punya karakter.';
+
+  const rgb = [
+    Math.round(70 + (chaos * 1.6)),
+    Math.round(95 + (nostalgia * 0.9)),
+    Math.round(140 + (energy * 0.8)),
+  ].join(', ');
+
+  const tags = [
+    energy > 75 ? 'high voltage' : 'steady build',
+    chaos > 60 ? 'glitch energy' : 'clean flow',
+    nostalgia > 60 ? 'throwback pulse' : 'future mode',
+  ];
+
+  moodBadge.textContent = activePreset ? `Preset: ${activePreset}` : `Mode: ${modeName}`;
+  moodScore.textContent = `${score} / 100`;
+  moodTitle.textContent = title;
+  moodDescription.textContent = description;
+  moodMeterFill.style.width = `${score}%`;
+  moodDisplay.style.setProperty('--mood-rgb', rgb);
+  moodDisplay.style.transform = 'translateY(-4px) scale(1.01)';
+  window.setTimeout(() => {
+    if (moodDisplay) moodDisplay.style.transform = '';
+  }, 180);
+
+  moodTags.innerHTML = tags.map((tag) => `<span>${tag}</span>`).join('');
+}
+
+function activateMoodPreset(presetKey) {
+  const preset = moodPresets[presetKey];
+  if (!preset) return;
+  setRangeValue(energyRange, energyValue, preset.energy);
+  setRangeValue(chaosRange, chaosValue, preset.chaos);
+  setRangeValue(nostalgiaRange, nostalgiaValue, preset.nostalgia);
+  moodPresetButtons.forEach((button) => {
+    button.classList.toggle('active', button.getAttribute('data-preset') === presetKey);
+  });
+  updateMoodLab(presetKey);
+}
+
+function shuffleMoodLab() {
+  const randomEnergy = Math.floor(Math.random() * 101);
+  const randomChaos = Math.floor(Math.random() * 101);
+  const randomNostalgia = Math.floor(Math.random() * 101);
+  moodPresetButtons.forEach((button) => button.classList.remove('active'));
+  setRangeValue(energyRange, energyValue, randomEnergy);
+  setRangeValue(chaosRange, chaosValue, randomChaos);
+  setRangeValue(nostalgiaRange, nostalgiaValue, randomNostalgia);
+  updateMoodLab();
+}
 let starCatcherTimer = null;
 let memoryPlaybackTimers = [];
 
@@ -510,6 +1009,8 @@ function toggleSeruMode() {
   seruActive = !seruActive;
   document.body.classList.toggle('seru-mode', seruActive);
   if (seruBtn) seruBtn.textContent = seruActive ? 'Matikan Seru Mode' : 'Seru Mode';
+  const adminModeMetric = document.getElementById('metricMode');
+  if (adminModeMetric) adminModeMetric.textContent = seruActive ? 'Seru' : 'Normal';
   if (seruActive) {
     createSeruOverlay();
     createSeruBurst();
@@ -560,6 +1061,7 @@ if (tantangBtn) {
 
 // Admin console for role 'admin'
 if (storedRole === 'admin') {
+  let adminConsoleAnimating = false;
   const adminToggle = document.createElement('button');
   adminToggle.className = 'admin-toggle';
   adminToggle.textContent = 'Admin';
@@ -569,8 +1071,86 @@ if (storedRole === 'admin') {
   adminConsole.className = 'admin-console hidden';
   adminConsole.innerHTML = `
     <h3>Admin Console</h3>
-    <div><strong>Users</strong><ul class="admin-users"></ul><button id="adminClearUsers" class="btn small">Hapus semua user</button></div>
-    <div style="margin-top:0.6rem;"><strong>Webhook test</strong><input id="adminWebhookUrl" placeholder="Webhook URL (optional)" /><textarea id="adminWebhookMsg" placeholder="Pesan..."></textarea><div class="row"><button id="adminSendWebhook" class="btn small">Kirim</button><button id="adminRefresh" class="btn small">Refresh</button></div></div>
+    <div class="admin-metrics">
+      <div class="admin-metric"><span>Users</span><strong id="metricUsers">0</strong></div>
+      <div class="admin-metric"><span>Storage</span><strong id="metricStorage">0 KB</strong></div>
+      <div class="admin-metric"><span>Theme</span><strong id="metricTheme">Default</strong></div>
+      <div class="admin-metric"><span>Mode</span><strong id="metricMode">Normal</strong></div>
+    </div>
+    <details class="admin-section admin-collapsible" open>
+      <summary>Users</summary>
+      <div class="admin-section-body">
+        <div class="admin-section-head">
+          <strong>Kelola user</strong>
+          <input id="adminUserSearch" type="text" placeholder="Cari username / email..." />
+        </div>
+        <ul class="admin-users"></ul>
+        <div class="row">
+          <button id="adminExportUsers" class="btn small">Export users</button>
+          <button id="adminImportUsersBtn" class="btn small">Import users</button>
+          <button id="adminClearUsers" class="btn small">Hapus semua user</button>
+        </div>
+        <input id="adminImportUsers" type="file" accept="application/json" class="hidden" />
+      </div>
+    </details>
+    <details class="admin-section admin-collapsible">
+      <summary>Webhook & Tools</summary>
+      <div class="admin-section-body">
+        <div><strong>Webhook test</strong><input id="adminWebhookUrl" placeholder="Webhook URL (optional)" /><textarea id="adminWebhookMsg" placeholder="Pesan..."></textarea><div class="row"><button id="adminSendWebhook" class="btn small">Kirim</button><button id="adminRefresh" class="btn small">Refresh</button></div></div>
+        <div class="admin-section">
+          <strong>Quick tools</strong>
+          <div class="row">
+            <button id="adminResetTheme" class="btn small">Reset theme</button>
+            <button id="adminResetIntro" class="btn small">Buka intro lagi</button>
+          </div>
+        </div>
+      </div>
+    </details>
+    <details class="admin-section admin-collapsible">
+      <summary>Reset Password</summary>
+      <div class="admin-section-body">
+        <input id="adminResetCodeInput" type="text" placeholder="Masukkan kode reset aktif" />
+        <div class="row">
+          <button id="adminSaveResetCode" class="btn small">Simpan kode 1 jam</button>
+          <button id="adminGenerateResetCode" class="btn small">Generate kode</button>
+          <button id="adminClearResetCode" class="btn small">Hapus kode</button>
+        </div>
+        <p id="adminResetCodeStatus" class="admin-note">Belum ada kode reset aktif.</p>
+        <p class="admin-note">User harus kirim "Reset password" ke nomor admin dulu, lalu hanya bisa reset pakai kode yang kamu atur di sini.</p>
+      </div>
+    </details>
+    <details class="admin-section admin-collapsible">
+      <summary>Broadcast Banner</summary>
+      <div class="admin-section-body">
+        <textarea id="adminAnnouncementInput" placeholder="Tulis pengumuman yang mau tampil di halaman..."></textarea>
+        <div class="row">
+          <button id="adminSaveAnnouncement" class="btn small">Tampilkan banner</button>
+          <button id="adminClearAnnouncement" class="btn small">Hapus banner</button>
+        </div>
+        <p id="adminAnnouncementStatus" class="admin-note">Belum ada pengumuman aktif.</p>
+      </div>
+    </details>
+    <details class="admin-section admin-collapsible">
+      <summary>Backup & Restore</summary>
+      <div class="admin-section-body">
+        <p id="adminBackupStatus" class="admin-note">Snapshot mencakup users, banner, reset code, accent, dan custom editor.</p>
+        <div class="row">
+          <button id="adminExportSnapshot" class="btn small">Export snapshot</button>
+          <button id="adminImportSnapshotBtn" class="btn small">Import snapshot</button>
+        </div>
+        <input id="adminImportSnapshot" type="file" accept="application/json" class="hidden" />
+      </div>
+    </details>
+    <details class="admin-section admin-collapsible">
+      <summary>Recent Activity</summary>
+      <div class="admin-section-body">
+        <ul class="admin-activity-list"></ul>
+        <div class="row">
+          <button id="adminRefreshActivity" class="btn small">Refresh log</button>
+          <button id="adminClearActivity" class="btn small">Hapus log</button>
+        </div>
+      </div>
+    </details>
     <div style="margin-top:0.6rem; display:flex; gap:0.4rem; align-items:center;"><button id="openSettingsBtn" class="btn small">Settings</button><div style="flex:1"></div><button id="adminLogout" class="btn ghost small">Logout Admin</button></div>
     <div id="settingsEditor" class="settings-editor hidden">
       <div class="settings-tabs"><button id="tabHtml" class="btn small">index.html</button><button id="tabCss" class="btn small">syle.css</button></div>
@@ -656,15 +1236,170 @@ if (storedRole === 'admin') {
     // ignore if any error
   }
 
-  function renderAdminUsers() {
+  function getStoredUsers() {
+    return getPersistedUsers();
+  }
+
+  function buildAdminSnapshot() {
+    const snapshot = {
+      version: ADMIN_SNAPSHOT_VERSION,
+      exportedAt: Date.now(),
+      exportedBy: sessionStorage.getItem('username') || 'admin',
+      data: {},
+    };
+    ADMIN_SNAPSHOT_KEYS.forEach((key) => {
+      const value = localStorage.getItem(key);
+      if (value !== null) {
+        snapshot.data[key] = value;
+      }
+    });
+    return snapshot;
+  }
+
+  function applyAdminSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+      throw new Error('Snapshot tidak valid.');
+    }
+    const data = snapshot.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('Data snapshot tidak ditemukan.');
+    }
+    ADMIN_SNAPSHOT_KEYS.forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        localStorage.setItem(key, String(data[key]));
+      } else {
+        localStorage.removeItem(key);
+      }
+    });
+    renderAnnouncementBanner();
+    updateAdminMetrics();
+    updateResetCodeStatus();
+    updateAnnouncementStatus();
+  }
+
+  function estimateLocalStorageSize() {
+    try {
+      let bytes = 0;
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        const value = key ? localStorage.getItem(key) || '' : '';
+        bytes += (key || '').length + value.length;
+      }
+      return `${(bytes / 1024).toFixed(bytes > 10240 ? 1 : 2)} KB`;
+    } catch (_) {
+      return 'unknown';
+    }
+  }
+
+  function updateAdminMetrics() {
+    const users = getStoredUsers();
+    const userCount = Object.keys(users).length;
+    const themeText = localStorage.getItem('accent-color') ? 'Custom' : 'Default';
+    const modeText = seruActive ? 'Seru' : 'Normal';
+    const usersEl = adminConsole.querySelector('#metricUsers');
+    const storageEl = adminConsole.querySelector('#metricStorage');
+    const themeEl = adminConsole.querySelector('#metricTheme');
+    const modeEl = adminConsole.querySelector('#metricMode');
+    if (usersEl) usersEl.textContent = String(userCount);
+    if (storageEl) storageEl.textContent = estimateLocalStorageSize();
+    if (themeEl) themeEl.textContent = themeText;
+    if (modeEl) modeEl.textContent = modeText;
+  }
+
+  function updateResetCodeStatus() {
+    const statusEl = adminConsole.querySelector('#adminResetCodeStatus');
+    const inputEl = adminConsole.querySelector('#adminResetCodeInput');
+    if (!statusEl || !inputEl) return;
+    const config = getAdminResetConfig();
+    if (!config || !config.code) {
+      statusEl.textContent = 'Belum ada kode reset aktif.';
+      inputEl.value = '';
+      return;
+    }
+    const expiresAt = Number(config.expiresAt || 0);
+    const expired = expiresAt < Date.now();
+    const expiresText = expired
+      ? 'sudah kedaluwarsa'
+      : `aktif sampai ${new Date(expiresAt).toLocaleString('id-ID')}`;
+    inputEl.value = String(config.code);
+    statusEl.textContent = `Kode aktif: ${config.code} (${expiresText})`;
+  }
+
+  function updateAnnouncementStatus() {
+    const inputEl = adminConsole.querySelector('#adminAnnouncementInput');
+    const statusEl = adminConsole.querySelector('#adminAnnouncementStatus');
+    if (!inputEl || !statusEl) return;
+    const data = getAnnouncementBanner();
+    if (!data || !data.message) {
+      inputEl.value = '';
+      statusEl.textContent = 'Belum ada pengumuman aktif.';
+      return;
+    }
+    inputEl.value = String(data.message);
+    const preview = String(data.message);
+    statusEl.textContent = `Banner aktif: "${preview.slice(0, 72)}${preview.length > 72 ? '...' : ''}"`;
+  }
+
+  function updateBackupStatus() {
+    const statusEl = adminConsole.querySelector('#adminBackupStatus');
+    if (!statusEl) return;
+    const snapshot = buildAdminSnapshot();
+    const dataKeys = Object.keys(snapshot.data);
+    statusEl.textContent = dataKeys.length
+      ? `Snapshot siap diexport: ${dataKeys.length} item tersimpan.`
+      : 'Belum ada data admin tersimpan untuk diexport.';
+  }
+
+  function renderAdminActivityLog() {
+    const ul = adminConsole.querySelector('.admin-activity-list');
+    if (!ul) return;
+    ul.innerHTML = '';
+    const entries = getAdminActivityLog().slice(0, 12);
+    if (entries.length === 0) {
+      const li = document.createElement('li');
+      li.textContent = 'Belum ada aktivitas tercatat.';
+      ul.appendChild(li);
+      return;
+    }
+    entries.forEach((entry) => {
+      const li = document.createElement('li');
+      const meta = document.createElement('div');
+      const title = document.createElement('strong');
+      const stamp = document.createElement('span');
+      title.textContent = `${entry.action} - ${entry.actor || 'system'}`;
+      stamp.textContent = new Date(Number(entry.createdAt) || Date.now()).toLocaleString('id-ID');
+      meta.appendChild(title);
+      meta.appendChild(stamp);
+
+      const detail = document.createElement('p');
+      detail.textContent = entry.details || '-';
+
+      li.appendChild(meta);
+      li.appendChild(detail);
+      ul.appendChild(li);
+    });
+  }
+
+  function logAdminActivity(action, details) {
+    pushAdminActivityLog(action, details);
+    renderAdminActivityLog();
+  }
+
+  function renderAdminUsers(filterText = '') {
     const ul = adminConsole.querySelector('.admin-users');
     ul.innerHTML = '';
-    let users = {};
-    try { users = JSON.parse(localStorage.getItem('pg_users') || '{}'); } catch (_) { users = {}; }
-    const keys = Object.keys(users);
+    const users = getStoredUsers();
+    const query = filterText.trim().toLowerCase();
+    const keys = Object.keys(users).filter((username) => {
+      if (!query) return true;
+      const email = users[username]?.email || '';
+      return username.toLowerCase().includes(query) || email.toLowerCase().includes(query);
+    });
+    updateAdminMetrics();
+    updateBackupStatus();
     if (keys.length === 0) {
       const li = document.createElement('li');
-      li.textContent = 'Tidak ada user terdaftar.';
+      li.textContent = query ? 'User tidak ditemukan.' : 'Tidak ada user terdaftar.';
       ul.appendChild(li);
       return;
     }
@@ -680,6 +1415,7 @@ if (storedRole === 'admin') {
         if (!confirm('Hapus user "' + u + '" ?')) return;
         delete users[u];
         localStorage.setItem('pg_users', JSON.stringify(users));
+        logAdminActivity('User dihapus', `Akun "${u}" dihapus dari daftar user.`);
         renderAdminUsers();
       });
       right.appendChild(del);
@@ -690,17 +1426,88 @@ if (storedRole === 'admin') {
   }
 
   adminToggle.addEventListener('click', () => {
-    adminConsole.classList.toggle('hidden');
-    if (!adminConsole.classList.contains('hidden')) renderAdminUsers();
+    if (adminConsoleAnimating) return;
+
+    if (adminConsole.classList.contains('hidden')) {
+      adminConsole.classList.remove('hidden', 'is-closing');
+      adminConsole.classList.add('is-opening');
+      const searchValue = adminConsole.querySelector('#adminUserSearch')?.value || '';
+      renderAdminUsers(searchValue);
+      updateResetCodeStatus();
+      updateAnnouncementStatus();
+      updateBackupStatus();
+      renderAdminActivityLog();
+      adminConsoleAnimating = true;
+      window.setTimeout(() => {
+        adminConsole.classList.remove('is-opening');
+        adminConsoleAnimating = false;
+      }, 420);
+      return;
+    }
+
+    adminConsole.classList.remove('is-opening');
+    adminConsole.classList.add('is-closing');
+    adminConsoleAnimating = true;
+    window.setTimeout(() => {
+      adminConsole.classList.add('hidden');
+      adminConsole.classList.remove('is-closing');
+      adminConsoleAnimating = false;
+    }, 300);
   });
 
   adminConsole.querySelector('#adminClearUsers').addEventListener('click', () => {
     if (!confirm('Hapus SEMUA user terdaftar? Ini irreversible.')) return;
     localStorage.removeItem('pg_users');
+    logAdminActivity('Semua user dihapus', 'Admin menghapus seluruh data user terdaftar.');
     renderAdminUsers();
   });
 
-  adminConsole.querySelector('#adminRefresh').addEventListener('click', () => renderAdminUsers());
+  adminConsole.querySelector('#adminRefresh').addEventListener('click', () => {
+    const searchValue = adminConsole.querySelector('#adminUserSearch')?.value || '';
+    renderAdminUsers(searchValue);
+  });
+
+  adminConsole.querySelector('#adminUserSearch').addEventListener('input', (event) => {
+    const target = event.target;
+    renderAdminUsers(target instanceof HTMLInputElement ? target.value : '');
+  });
+
+  adminConsole.querySelector('#adminExportUsers').addEventListener('click', () => {
+    const users = getStoredUsers();
+    const blob = new Blob([JSON.stringify(users, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pg_users_backup.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  adminConsole.querySelector('#adminImportUsersBtn').addEventListener('click', () => {
+    adminConsole.querySelector('#adminImportUsers')?.click();
+  });
+
+  adminConsole.querySelector('#adminImportUsers').addEventListener('change', async (event) => {
+    const target = event.target;
+    const file = target instanceof HTMLInputElement ? target.files?.[0] : null;
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Format file tidak valid.');
+      }
+      const currentUsers = getStoredUsers();
+      localStorage.setItem('pg_users', JSON.stringify({ ...currentUsers, ...parsed }));
+      logAdminActivity('Import user', `Import user berhasil (${Object.keys(parsed).length} akun).`);
+      renderAdminUsers(adminConsole.querySelector('#adminUserSearch')?.value || '');
+      alert('Import user berhasil.');
+    } catch (error) {
+      alert('Gagal import user: ' + error.message);
+    } finally {
+      if (target instanceof HTMLInputElement) target.value = '';
+    }
+  });
 
   adminConsole.querySelector('#adminSendWebhook').addEventListener('click', async () => {
     const url = adminConsole.querySelector('#adminWebhookUrl').value.trim();
@@ -708,8 +1515,131 @@ if (storedRole === 'admin') {
     if (!url) return alert('Masukkan Webhook URL atau paste di field.');
     try {
       await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: msg })});
+      logAdminActivity('Webhook test', `Webhook test dikirim ke ${url}.`);
       alert('Terkirim');
     } catch (e) { alert('Gagal kirim: ' + e.message); }
+  });
+
+  adminConsole.querySelector('#adminResetTheme').addEventListener('click', () => {
+    localStorage.removeItem('accent-color');
+    localStorage.removeItem('admin_custom_style');
+    const styleEl = document.getElementById('admin-custom-style');
+    if (styleEl) styleEl.remove();
+    root.style.removeProperty('--accent');
+    logAdminActivity('Theme direset', 'Accent color dan custom CSS dihapus.');
+    updateAdminMetrics();
+    updateBackupStatus();
+    alert('Theme di-reset ke default.');
+  });
+
+  adminConsole.querySelector('#adminResetIntro').addEventListener('click', () => {
+    if (!introOverlay) return alert('Intro overlay tidak ditemukan.');
+    introOverlay.style.display = '';
+    introOverlay.classList.remove('intro-hidden');
+    document.body.classList.add('hide-scroll');
+    logAdminActivity('Intro dibuka ulang', 'Intro overlay diaktifkan ulang dari admin console.');
+    alert('Intro siap dibuka lagi di halaman ini.');
+  });
+
+  adminConsole.querySelector('#adminSaveResetCode').addEventListener('click', () => {
+    const inputEl = adminConsole.querySelector('#adminResetCodeInput');
+    const code = inputEl?.value.trim() || '';
+    if (!code) return alert('Masukkan kode reset dulu.');
+    const expiresAt = Date.now() + (60 * 60 * 1000);
+    localStorage.setItem('admin_reset_config', JSON.stringify({ code, expiresAt }));
+    logAdminActivity('Reset code disimpan', `Kode reset aktif hingga ${new Date(expiresAt).toLocaleString('id-ID')}.`);
+    updateResetCodeStatus();
+    updateBackupStatus();
+    alert('Kode reset disimpan dan aktif selama 1 jam.');
+  });
+
+  adminConsole.querySelector('#adminGenerateResetCode').addEventListener('click', () => {
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const inputEl = adminConsole.querySelector('#adminResetCodeInput');
+    if (inputEl) inputEl.value = code;
+  });
+
+  adminConsole.querySelector('#adminClearResetCode').addEventListener('click', () => {
+    localStorage.removeItem('admin_reset_config');
+    logAdminActivity('Reset code dihapus', 'Kode reset password dihapus oleh admin.');
+    updateResetCodeStatus();
+    updateBackupStatus();
+    alert('Kode reset dihapus.');
+  });
+
+  adminConsole.querySelector('#adminSaveAnnouncement').addEventListener('click', () => {
+    const inputEl = adminConsole.querySelector('#adminAnnouncementInput');
+    const message = inputEl?.value.trim() || '';
+    if (!message) return alert('Tulis isi pengumuman dulu.');
+    localStorage.setItem('site_announcement_banner', JSON.stringify({
+      message,
+      updatedAt: Date.now(),
+      updatedBy: sessionStorage.getItem('username') || 'admin',
+    }));
+    logAdminActivity('Banner diperbarui', `Banner aktif: "${message.slice(0, 48)}${message.length > 48 ? '...' : ''}"`);
+    updateAnnouncementStatus();
+    updateBackupStatus();
+    renderAnnouncementBanner();
+    alert('Banner pengumuman ditampilkan.');
+  });
+
+  adminConsole.querySelector('#adminClearAnnouncement').addEventListener('click', () => {
+    localStorage.removeItem('site_announcement_banner');
+    logAdminActivity('Banner dihapus', 'Banner pengumuman dihapus dari halaman.');
+    updateAnnouncementStatus();
+    updateBackupStatus();
+    renderAnnouncementBanner();
+    alert('Banner pengumuman dihapus.');
+  });
+
+  adminConsole.querySelector('#adminExportSnapshot').addEventListener('click', () => {
+    const snapshot = buildAdminSnapshot();
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `admin_snapshot_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    logAdminActivity('Snapshot diexport', `Snapshot berisi ${Object.keys(snapshot.data).length} item berhasil diexport.`);
+  });
+
+  adminConsole.querySelector('#adminImportSnapshotBtn').addEventListener('click', () => {
+    adminConsole.querySelector('#adminImportSnapshot')?.click();
+  });
+
+  adminConsole.querySelector('#adminImportSnapshot').addEventListener('change', async (event) => {
+    const target = event.target;
+    const file = target instanceof HTMLInputElement ? target.files?.[0] : null;
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if (!confirm('Import snapshot akan mengganti data admin yang tersimpan. Lanjutkan?')) return;
+      applyAdminSnapshot(parsed);
+      logAdminActivity('Snapshot diimport', `Snapshot dari file "${file.name}" berhasil diterapkan.`);
+      renderAdminUsers(adminConsole.querySelector('#adminUserSearch')?.value || '');
+      alert('Snapshot berhasil diimport.');
+    } catch (error) {
+      alert('Gagal import snapshot: ' + error.message);
+    } finally {
+      if (target instanceof HTMLInputElement) target.value = '';
+    }
+  });
+
+  adminConsole.querySelector('#adminRefreshActivity').addEventListener('click', () => {
+    renderAdminActivityLog();
+  });
+
+  adminConsole.querySelector('#adminClearActivity').addEventListener('click', () => {
+    if (!confirm('Hapus semua recent activity?')) return;
+    localStorage.removeItem(ADMIN_ACTIVITY_LOG_KEY);
+    renderAdminActivityLog();
+  });
+
+  const adminActivityList = adminConsole.querySelector('.admin-activity-list');
+  adminActivityList?.addEventListener('admin-log-sync', () => {
+    renderAdminActivityLog();
   });
 
   adminConsole.querySelector('#adminLogout').addEventListener('click', () => {
@@ -779,6 +1709,9 @@ if (storedRole === 'admin') {
     if (!s) { s = document.createElement('style'); s.id = 'admin-custom-style'; document.head.appendChild(s); }
     s.textContent = css;
     localStorage.setItem('admin_custom_style', css);
+    logAdminActivity('CSS live applied', 'Custom CSS diterapkan langsung ke halaman.');
+    updateAdminMetrics();
+    updateBackupStatus();
     alert('CSS diterapkan dan disimpan ke localStorage');
   });
 
@@ -787,6 +1720,9 @@ if (storedRole === 'admin') {
     const c = settingsCss.value || '';
     localStorage.setItem('admin_custom_index', h);
     localStorage.setItem('admin_custom_style', c);
+    logAdminActivity('Settings disimpan', 'Custom HTML dan CSS disimpan ke localStorage.');
+    updateAdminMetrics();
+    updateBackupStatus();
     alert('Simpan selesai. Untuk melihat perubahan HTML, gunakan Preview atau muat ulang halaman jika ingin menerapkan.');
   });
 
@@ -991,13 +1927,36 @@ if (colorPickerBtn && colorPicker) {
       root.style.setProperty('--accent', color);
       localStorage.setItem('accent-color', color);
       colorPicker.classList.add('hidden');
+      const adminThemeMetric = document.getElementById('metricTheme');
+      if (adminThemeMetric) adminThemeMetric.textContent = 'Custom';
     });
   });
 
   const savedColor = localStorage.getItem('accent-color');
   if (savedColor) {
     root.style.setProperty('--accent', savedColor);
+    const adminThemeMetric = document.getElementById('metricTheme');
+    if (adminThemeMetric) adminThemeMetric.textContent = 'Custom';
   }
+}
+
+[energyRange, chaosRange, nostalgiaRange].forEach((input) => {
+  input?.addEventListener('input', () => {
+    moodPresetButtons.forEach((button) => button.classList.remove('active'));
+    updateMoodLab();
+  });
+});
+
+moodPresetButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    activateMoodPreset(button.getAttribute('data-preset') || 'midnight');
+  });
+});
+
+shuffleMood?.addEventListener('click', shuffleMoodLab);
+
+if (moodDisplay) {
+  activateMoodPreset('midnight');
 }
 
 if (backToTop) {
